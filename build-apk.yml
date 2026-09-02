@@ -1,50 +1,38 @@
 name: Build Android APK (저메추)
-
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
-
-# Node 20 deprecation warning annotation 제거 환경변수
-env:
-  ACTIONS_RUNNER_FORCE_NODE24_WARNING: false
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: write
-
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
+      - name: Git Checkout (Warning-Free)
+        run: |
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" .
       - name: Setup Java JDK
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Install Dependencies & Setup Capacitor
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
           mkdir -p www
           cp -r index.html styles.css data.js app.js manifest.json service-worker.js www/ 2>/dev/null || true
           
-          # Initialize capacitor config if not exists
           if [ ! -f "capacitor.config.json" ]; then
             npx cap init "저메추" "com.toss.jomechu" --web-dir www
           fi
           
-          # Add android platform if not already added
           if [ ! -d "android" ]; then
             npx cap add android
           fi
           
           npx cap sync android
-
       - name: Build Android Debug APK
         working-directory: android
         env:
@@ -52,10 +40,14 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: jomechu-app-debug.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+      - name: Create GitHub Release & Upload APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes 2>/dev/null || true
+          git tag -d latest 2>/dev/null || true
+          git push --delete origin latest 2>/dev/null || true
+          
+          gh release create latest android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "저메추 Android APK (최신 빌드)" \
+            --notes "오늘 뭐 먹지? 저메추 앱 최신 APK 파일입니다. 아래 app-debug.apk를 클릭하여 다운로드하세요!"
