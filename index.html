@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>저메추 | 야근 저녁 메뉴 자동 추천</title>
+  <meta name="description" content="오늘 뭐 먹지? 결정 장애를 해결해 주는 야근 저녁 메뉴 스마트 자동 추천 서비스">
+  
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3182F6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="저메추">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- Confetti Canvas Layer -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <div class="app-container">
+    
+    <!-- Top Header & Status -->
+    <header class="app-header">
+      <div class="header-top">
+        <span class="brand-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"/>
+          </svg>
+          야근 저메추 AI
+        </span>
+        <span class="brand-time" id="currentTimeText">18:30 야근타임</span>
+      </div>
+
+      <div class="app-title-area">
+        <h1>오늘 저녁 뭐 먹지?</h1>
+        <p>3초 만에 고민 끝! 맛있는 저녁 메뉴 자동 추천</p>
+      </div>
+
+      <!-- Banner -->
+      <div class="location-banner">
+        <div class="location-info">
+          <span class="location-icon">🍱</span>
+          <div class="location-text">
+            <span class="location-label">스마트 추천 시스템</span>
+            <span class="location-addr">직장인 취향저격 야근 메뉴 큐레이션</span>
+          </div>
+        </div>
+        <div class="delivery-badge-group">
+          <span class="delivery-chip">오늘의 추천</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs (Toss Segmented Control: 3 Tabs) -->
+    <nav class="nav-tab-container">
+      <div class="tab-group" style="grid-template-columns: repeat(3, 1fr);">
+        <button class="tab-btn active" id="tabRandom" onclick="switchTab('random')">
+          🎲 추천
+        </button>
+        <button class="tab-btn" id="tabRoulette" onclick="switchTab('roulette')">
+          🎡 룰렛
+        </button>
+        <button class="tab-btn" id="tabTourney" onclick="switchTab('tournament')">
+          ⚖️ 밸런스
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- ============================================================
+           VIEW 1: Smart Random Recommendation
+           ============================================================ -->
+      <section id="viewRandom" class="tab-view active">
+        
+        <div class="random-hero-card">
+          <div class="hero-subtitle">오늘의 야근 추천 픽</div>
+          <div class="hero-title" id="randomHeaderTitle">선택 장애 해결사 등장 ⚡</div>
+
+          <!-- Result Presentation Box -->
+          <div class="recommend-box" id="recommendCard">
+            <!-- Shuffling Animation Overlay -->
+            <div class="shuffling-overlay" id="shufflingOverlay">
+              <div class="spinner-icon">🍲</div>
+              <div class="shuffling-text" id="shufflingStatus">추천 메뉴 분석 중...</div>
+            </div>
+
+            <!-- Food Image -->
+            <div class="food-image-wrapper">
+              <img id="cardFoodImg" src="" alt="추천 메뉴">
+              <span class="category-tag-badge" id="cardCategory">한식</span>
+              <span class="calorie-tag-badge" id="cardCalorie">
+                🔥 <span id="cardCalorieVal">0</span> kcal
+              </span>
+            </div>
+
+            <div class="recommend-info">
+              <div class="menu-name" id="cardMenuName">1인 보쌈 정식</div>
+              <div class="menu-desc" id="cardDesc">부드럽게 삶아낸 수육에 아삭한 무김치가 어우러진 가성비 정식</div>
+              
+              <div class="meta-row">
+                <div>
+                  <span class="time-text">예상 소요</span>
+                  <strong style="margin-left: 4px; color: var(--text-title);" id="cardTime">20~35분</strong>
+                </div>
+                <div class="price-text" id="cardPrice">10,500원</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTAs -->
+          <div class="cta-button-group">
+            <button class="toss-button btn-primary" id="btnReroll" onclick="triggerRandomRecommendation()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              다른 메뉴 추천받기
+            </button>
+            
+            <button class="toss-button btn-secondary" onclick="shareCurrentMenu()">
+              🔗 동료에게 슬랙/카톡으로 메뉴 공유
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Quick Info Box -->
+        <div class="quick-stats">
+          <div class="stat-item">
+            <span class="stat-val">20개</span>
+            <span class="stat-lbl">엄선 데이터</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" id="avgCalText">730kcal</span>
+            <span class="stat-lbl">평균 칼로리</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" style="color: var(--toss-blue);">스마트 추천</span>
+            <span class="stat-lbl">AI 큐레이션</span>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ============================================================
+           VIEW 2: Roulette Mode (돌려돌려 돌림판)
+           ============================================================ -->
+      <section id="viewRoulette" class="tab-view">
+        
+        <div class="roulette-hero-card">
+          <div class="hero-subtitle">손맛으로 정하는 저녁 메뉴</div>
+          <div class="hero-title">운명의 룰렛 돌리기 🎡</div>
+
+          <!-- Roulette Canvas Container -->
+          <div class="roulette-container">
+            <div class="roulette-pointer">▼</div>
+            <div class="roulette-wheel-wrapper">
+              <canvas id="rouletteCanvas" width="340" height="340"></canvas>
+              <button class="roulette-center-btn" id="btnSpinCenter" onclick="spinRoulette()">
+                <span>돌리기</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Roulette Candidate Preset Selector -->
+          <div class="roulette-preset-bar">
+            <button class="filter-chip active" id="preset8Random" onclick="changeRoulettePreset('random8', this)">🎲 랜덤 8선</button>
+            <button class="filter-chip" id="presetKorean" onclick="changeRoulettePreset('korean', this)">🍚 한식 모음</button>
+            <button class="filter-chip" id="presetPopular" onclick="changeRoulettePreset('popular', this)">🔥 직장인 인기</button>
+            <button class="filter-chip" id="presetDiet" onclick="changeRoulettePreset('diet', this)">🥗 라이트/다이어트</button>
+          </div>
+
+          <!-- Spin Action Button -->
+          <div class="cta-button-group" style="margin-top: 18px;">
+            <button class="toss-button btn-primary" id="btnSpin" onclick="spinRoulette()">
+              🎡 룰렛 힘차게 돌리기!
+            </button>
+            <button class="toss-button btn-subtle" onclick="shuffleRouletteItems()">
+              🔀 룰렛 후보 메뉴 섞기
+            </button>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ============================================================
+           VIEW 3: Tournament Mode (2지선다 이상형 월드컵)
+           ============================================================ -->
+      <section id="viewTourney" class="tab-view">
+        
+        <div class="tournament-wrapper">
+          <div class="tournament-header-card">
+            <div>
+              <span class="tourney-badge">야근 메뉴 토너먼트</span>
+              <div style="font-size: 13px; color: var(--text-sub); margin-top: 4px;">팀원들과 투표로 결정해보세요!</div>
+            </div>
+            <div class="tourney-progress-text" id="tourneyRoundText">8강전 (1/4)</div>
+          </div>
+
+          <!-- 2 Cards Choice -->
+          <div class="versus-container" id="versusContainer">
+            <div class="versus-badge">VS</div>
+
+            <!-- Choice A -->
+            <div class="pick-card" onclick="selectTourneyWinner(0)">
+              <div class="pick-img-box">
+                <img id="tourneyImgA" src="" alt="메뉴 A">
+                <span class="category-tag-badge" id="tourneyCatA">한식</span>
+              </div>
+              <div class="pick-body">
+                <div>
+                  <div class="pick-title" id="tourneyTitleA">1인 보쌈 정식</div>
+                </div>
+                <div class="pick-calorie" id="tourneyCalA">780 kcal</div>
+              </div>
+            </div>
+
+            <!-- Choice B -->
+            <div class="pick-card" onclick="selectTourneyWinner(1)">
+              <div class="pick-img-box">
+                <img id="tourneyImgB" src="" alt="메뉴 B">
+                <span class="category-tag-badge" id="tourneyCatB">중식</span>
+              </div>
+              <div class="pick-body">
+                <div>
+                  <div class="pick-title" id="tourneyTitleB">차돌 고기짬뽕 & 탕수육</div>
+                </div>
+                <div class="pick-calorie" id="tourneyCalB">850 kcal</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tournament Result Box (Hidden Initially) -->
+          <div class="winner-card" id="winnerBox" style="display: none;">
+            <div class="winner-crown">👑</div>
+            <div class="hero-subtitle">최종 선택 완료!</div>
+            <h2 class="menu-name" id="winnerMenuTitle" style="font-size: 24px; margin-bottom: 8px;">1인 보쌈 정식</h2>
+            <p class="menu-desc" id="winnerDesc">동료들과 함께 결정한 오늘 야근의 1등 저녁 메뉴입니다!</p>
+            
+            <div class="food-image-wrapper" style="height: 180px; margin: 16px 0;">
+              <img id="winnerImg" src="" alt="우승 메뉴">
+              <span class="calorie-tag-badge" id="winnerCal">🔥 780 kcal</span>
+            </div>
+
+            <div class="cta-button-group">
+              <button class="toss-button btn-primary" onclick="shareWinnerMenu()">
+                📢 팀원들에게 결정된 메뉴 공유하기
+              </button>
+              <button class="toss-button btn-subtle" onclick="restartTournament()">
+                🔄 토너먼트 다시 하기
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Detail Bottom Sheet Modal -->
+    <div class="modal-backdrop" id="detailModal" onclick="closeModalOnBackdrop(event)">
+      <div class="modal-sheet">
+        <div class="modal-sheet-handle"></div>
+        <button class="modal-close-btn" onclick="closeDetailModal()">✕</button>
+        
+        <div class="food-image-wrapper" style="height: 220px;">
+          <img id="modalFoodImg" src="" alt="메뉴 상세 사진">
+          <span class="category-tag-badge" id="modalCategory">한식</span>
+          <span class="calorie-tag-badge" id="modalCalorie">🔥 780 kcal</span>
+        </div>
+
+        <div class="menu-name" id="modalMenuName" style="font-size: 22px;">1인 보쌈 정식</div>
+        <div class="menu-desc" id="modalDesc">부드럽게 삶아낸 수육에 아삭한 무김치와 쌈채소가 어우러진 1인 가성비 정식</div>
+        
+        <!-- Tag Badges -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;" id="modalTags">
+          <!-- Dynamic tags -->
+        </div>
+
+        <div class="meta-row" style="margin-bottom: 20px;">
+          <div>
+            <span class="time-text">예상 소요 시간</span>
+            <strong style="margin-left: 4px; color: var(--text-title);" id="modalDeliveryTime">20~35분</strong>
+          </div>
+          <div class="price-text" id="modalPrice">10,500원</div>
+        </div>
+
+        <div class="cta-button-group">
+          <button class="toss-button btn-primary" onclick="shareModalMenu()">
+            📋 메뉴 정보 슬랙/카톡 복사
+          </button>
+          <button class="toss-button btn-subtle" onclick="closeDetailModal()">
+            닫기
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Toast Notification Component -->
+    <div class="toast-msg" id="toastMsg">
+      <span id="toastIcon">✨</span>
+      <span id="toastText">메뉴 추천이 완료되었습니다!</span>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
